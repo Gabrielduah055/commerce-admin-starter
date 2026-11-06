@@ -1,0 +1,84 @@
+<header class="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <h1 class="page-heading">Overview</h1>
+    <p class="page-copy">Commerce, customer, and inventory activity from your store.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a class="btn btn-secondary" routerLink="/orders"><i class="uil uil-shopping-bag" aria-hidden="true"></i>View orders</a>
+    <a class="btn btn-primary" routerLink="/products/new"><i class="uil uil-plus" aria-hidden="true"></i>Add product</a>
+  </div>
+</header>
+
+@if (errorMessage) {
+  <section class="mt-6 rounded-lg border border-red-300 bg-red-50 p-5" role="alert">
+    <h2 class="font-bold text-red-900">The overview could not be loaded</h2>
+    <p class="mt-1 text-sm leading-6 text-red-800">{{ errorMessage }}</p>
+    <button class="btn btn-secondary mt-4" type="button" (click)="load()"><i class="uil uil-redo" aria-hidden="true"></i>Try again</button>
+  </section>
+} @else if (loading) {
+  <app-loading-spinner class="mt-7 block" label="Loading live overview..." />
+} @else {
+  <section class="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" aria-label="Business summary">
+    @for (metric of metrics(snapshot); track metric.label) {
+      <article class="panel p-5">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-xs font-bold text-muted">{{ metric.label }}</p>
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg" [class]="metric.tone"><i class="uil" [class]="metric.icon" aria-hidden="true"></i></span>
+        </div>
+        <p class="mt-4 text-2xl font-bold tracking-[-0.04em] text-ink">{{ metric.value }}</p>
+        <p class="mt-2 text-xs leading-5 text-muted">{{ metric.note }}</p>
+      </article>
+    }
+  </section>
+
+  <div class="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
+    <section class="panel overflow-hidden">
+      <div class="flex items-center justify-between border-b border-line px-5 py-4 sm:px-6">
+        <div><h2 class="text-base font-bold text-ink">Recent orders</h2><p class="mt-1 text-xs text-muted">Latest checkout activity</p></div>
+        <a class="inline-flex items-center gap-1 text-sm font-bold text-brand hover:text-brand-dark" routerLink="/orders">View all<i class="uil uil-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      @if (snapshot.recentOrders.length) {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] border-collapse">
+            <thead class="table-head"><tr><th class="px-5 py-3 sm:px-6">Order</th><th class="px-4 py-3">Customer</th><th class="px-4 py-3">Payment</th><th class="px-4 py-3">Fulfillment</th><th class="px-5 py-3 text-right sm:px-6">Total</th></tr></thead>
+            <tbody class="divide-y divide-line">
+              @for (order of snapshot.recentOrders; track order.id) {
+                <tr class="hover:bg-slate-50/70">
+                  <td class="px-5 py-4 sm:px-6"><a class="font-bold text-ink hover:text-brand" [routerLink]="['/orders', order.id]">{{ order.orderNumber }}</a><p class="mt-1 text-xs text-muted">{{ order.createdAt | date:'mediumDate' }}</p></td>
+                  <td class="px-4 py-4"><p class="text-sm font-bold text-ink">{{ order.customer.fullName }}</p><p class="mt-1 text-xs text-muted">{{ order.unitCount }} item{{ order.unitCount === 1 ? '' : 's' }}</p></td>
+                  <td class="px-4 py-4"><span class="rounded-md px-2 py-1 text-xs font-bold capitalize" [ngClass]="paymentClass(order.paymentStatus)">{{ statusLabel(order.paymentStatus) }}</span></td>
+                  <td class="px-4 py-4 text-xs font-bold capitalize" [ngClass]="fulfillmentClass(order.fulfillmentStatus)">{{ statusLabel(order.fulfillmentStatus) }}</td>
+                  <td class="px-5 py-4 text-right font-bold text-ink sm:px-6">{{ order.grandTotalPesewas / 100 | currency:'GHS':'symbol-narrow':'1.2-2':'en-GH' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="px-6 py-14 text-center"><i class="uil uil-shopping-bag mb-3 block text-4xl text-slate-300" aria-hidden="true"></i><p class="font-bold text-ink">No orders yet</p><p class="mt-2 text-sm text-muted">Checkout activity will appear here.</p></div>
+      }
+    </section>
+
+    <div class="grid content-start gap-5">
+      <section class="panel p-5">
+        <div class="flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-lg bg-orange-50 text-xl text-brand"><i class="uil uil-box" aria-hidden="true"></i></span><div><h2 class="font-bold text-ink">Catalog health</h2><p class="mt-0.5 text-xs text-muted">Production inventory</p></div></div>
+        <dl class="mt-5 divide-y divide-line">
+          <div class="flex items-center justify-between py-3"><dt class="text-sm text-muted">All products</dt><dd class="font-bold text-ink">{{ snapshot.catalog.totalProducts }}</dd></div>
+          <div class="flex items-center justify-between py-3"><dt class="text-sm text-muted">Visible products</dt><dd class="font-bold text-emerald-700">{{ snapshot.inventory.activeProducts }}</dd></div>
+          <div class="flex items-center justify-between py-3"><dt class="text-sm text-muted">Draft products</dt><dd class="font-bold text-amber-700">{{ snapshot.catalog.draftProducts }}</dd></div>
+          <div class="flex items-center justify-between py-3"><dt class="text-sm text-muted">Low stock</dt><dd class="font-bold text-amber-700">{{ snapshot.inventory.lowStockProducts }}</dd></div>
+          <div class="flex items-center justify-between pt-3"><dt class="text-sm text-muted">Out of stock</dt><dd class="font-bold text-red-700">{{ snapshot.inventory.outOfStockProducts }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel p-5">
+        <div class="flex items-center justify-between"><div><h2 class="font-bold text-ink">Customer base</h2><p class="mt-1 text-xs text-muted">Verified purchasers only</p></div><a class="text-xs font-bold text-brand hover:text-brand-dark" routerLink="/customers">View customers</a></div>
+        <div class="mt-5 grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-lg bg-slate-50 p-3"><strong class="block text-xl text-ink">{{ snapshot.customers.total }}</strong><span class="mt-1 block text-[10px] font-bold uppercase tracking-wide text-muted">Total</span></div>
+          <div class="rounded-lg bg-emerald-50 p-3"><strong class="block text-xl text-emerald-800">{{ snapshot.customers.active }}</strong><span class="mt-1 block text-[10px] font-bold uppercase tracking-wide text-emerald-700">Active</span></div>
+          <div class="rounded-lg bg-violet-50 p-3"><strong class="block text-xl text-violet-800">{{ snapshot.customers.repeat }}</strong><span class="mt-1 block text-[10px] font-bold uppercase tracking-wide text-violet-700">Repeat</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+}
